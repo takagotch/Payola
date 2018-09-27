@@ -163,8 +163,31 @@ end
 
 ##### subscriptions
 ```
+gem 'payola-payments'
+rails g payola:install
+rake db:migrate
+
+rails g SubscriptionPlan \
+      amount:integer \
+      interval:string \
+      stripe_id:string \
+      name:string
+```
 
 
+```ruby
+class SubscriptionPlan < ActiveRecord::Base
+  include Payola::Plan
+end
+
+# app/views/subscriptions/new.html.erb
+<%= render 'payola/transactions/stripe_header' %>
+
+<%= form_tag('/subscriptions',
+    class: 'payola-onestep-subscription-form',
+    '' => '/payola'
+    '' => @plan.plan_id,
+    '' => @plan.id) do |f| %>
 
 ```
 
