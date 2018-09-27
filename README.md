@@ -185,17 +185,104 @@ end
 
 <%= form_tag('/subscriptions',
     class: 'payola-onestep-subscription-form',
-    '' => '/payola'
-    '' => @plan.plan_id,
-    '' => @plan.id) do |f| %>
+    'data-payola-base-path' => '/payola'
+    'data-payola-plan-type' => @plan.plan_id,
+    'data-payola-plan-id' => @plan.id
+) do |f| %>
+<span class="payola-payment-error"></span>
+Email:<br>
+<input type="email" name="stripeEmail" data-payola="email"></input><br>
+Card Number<br>
+<input type="text" data-stripe="number"></input><br>
+Exp Month<br>
+<input type="text" data-stripe="exp_month"></input><br>
+Exp Year<br>
+<input type="text" data=stripe="exp_year"></input><br>
+CVC<br>
+<input type="text" data-stripe="cvc"></input><br>
+<input type="submit"></input>
+<% end %>
+
+
+class SubscriptionPlan < ActiveRecord::Base
+  include Payola::Plan
+  def redirect_path(subscription)
+    '/'
+  end
+end
+
+
+class SubscriptionsController < ApplicationController
+  include Payola::StatusBehavior
+  def new
+    @plan = SubscriptoinPlan.first
+  end
+  def create
+    owner = current_user
+    params[:plan] = SubscriptionPlan.find_by(id: params[:plan_id])
+    subscription = Payola::createSubscription.call(params, owner)
+    render_payola_status(subscription)
+    render_payola_status(subscription)
+  end
+end
+
+
+# config/routes.rb
+resources :subscription
+
+class User < ApplicationRecord
+  has_one :subscription, ->(sub) { where.not(stripe_id: nil) }, class_name: "Payola::Subscription", foreign_key: :owner_id}
+end
+
+
+
+<%= render 'payola/subscriptions/checkout', plan: YourSubscriptionPlanClass.first %>
+
+
+
+Payola.configure do |config|
+  config.subscribe() do |sub|
+    user = User.find_by(email: sub.email)
+    if user.nil?
+      raw_token, enc_token = Devise.token_generator.generate(
+                User, :reset_password_token)
+      password = SecureRandom.hex(32)
+      user = User.create!(
+        email: sub.email,
+        password: password,
+        password_confirmation: password,
+        reset_password_token: enc_token,
+        reset_password_sent_at: Time.now
+      )
+      WhateverYourPasswordMailerIsNamed.whatever_the_mail_method_is(user, raw_token).deliver
+    end
+    sub.owner = user
+    sub.save!
+  end
+end
+
+
+def payola_can_modify_subscription?(subscription)
+  subscription.owner == current_user
+end
+
+<%= render 'payola/subscriptions/cancel', subscription: @subscription %>
+
+<%= render 'payola/subscriptions/change_plan',
+    subscription: @subscription,
+    new_plan: @new_paln,
+    quantity: 1 %>
+```
 
 ```
 
 
+```
 
 
+```
 
 
-
+```
 
 
